@@ -1,0 +1,1 @@
+Your files have been encrypted! (This is just a test for antivirus)

@@ -1,0 +1,64 @@
+# GhostAntivirus AI Engine Dockerfile
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    libmagic1 \
+    libmagic-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -r -s /bin/false ghost
+
+# Create app directory
+WORKDIR /app
+
+# Create directories
+RUN mkdir -p /app/models \
+             /app/logs \
+             /app/data \
+             /app/config
+
+# Copy requirements first (for layer caching)
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY src/ ./src/
+COPY setup.py .
+COPY README.md .
+
+# Install the application
+RUN pip install -e .
+
+# Copy configuration
+COPY config/default.toml /app/config/config.toml
+
+# Set permissions
+RUN chown -R ghost:ghost /app
+
+# Switch to non-root user
+USER ghost
+
+# Expose port
+EXPOSE 8000
+
+# Environment variables
+ENV PYTHONPATH=/app/src
+ENV AI_CONFIG_PATH=/app/config/config.toml
+ENV AI_API_HOST=0.0.0.0
+ENV AI_API_PORT=8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the application
+CMD ["python", "-m", "ai_engine.main", "serve", "--host", "0.0.0.0", "--port", "8000"]

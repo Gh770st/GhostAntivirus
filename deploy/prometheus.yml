@@ -1,0 +1,62 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # GhostAntivirus AI Engine
+  - job_name: 'ghost-ai'
+    static_configs:
+      - targets: ['ghost-ai:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # GhostAntivirus Core Engine
+  - job_name: 'ghost-core'
+    static_configs:
+      - targets: ['ghost-core:9000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # GhostAntivirus Network Guard
+  - job_name: 'ghost-network'
+    static_configs:
+      - targets: ['ghost-network:7000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+
+  # Node Exporter (system metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']

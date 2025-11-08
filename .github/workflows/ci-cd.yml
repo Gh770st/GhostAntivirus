@@ -1,0 +1,282 @@
+name: GhostAntivirus CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Code Quality Checks
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Python linting
+      run: |
+        pip install black flake8 mypy
+        black --check ai-engine/src/
+        flake8 ai-engine/src/
+        mypy ai-engine/src/
+    
+    - name: Rust formatting
+      run: |
+        cd core
+        cargo fmt -- --check
+    
+    - name: Rust clippy
+      run: |
+        cd core
+        cargo clippy -- -D warnings
+
+  # Security Scanning
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Core Engine Tests
+  test-core:
+    runs-on: ubuntu-latest
+    needs: [quality, security]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Test Core Engine
+      run: |
+        cd core
+        cargo test --verbose
+    
+    - name: Build Core Engine
+      run: |
+        cd core
+        cargo build --release
+
+  # AI Engine Tests
+  test-ai:
+    runs-on: ubuntu-latest
+    needs: [quality, security]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        cd ai-engine
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Run tests
+      run: |
+        cd ai-engine
+        python -m pytest testing/tests/ -v --cov=src --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./ai-engine/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [test-core, test-ai]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: ghost_password
+          POSTGRES_USER: ghost
+          POSTGRES_DB: ghost_ai
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Build applications
+      run: |
+        cd core && cargo build --release &
+        cd ai-engine && pip install -r requirements.txt && pip install -e . &
+        wait
+    
+    - name: Run integration tests
+      run: |
+        cd testing
+        python integration_tests.py
+      env:
+        DATABASE_URL: postgresql://ghost:ghost_password@localhost:5432/ghost_ai
+        REDIS_URL: redis://localhost:6379/0
+
+  # Build Docker Images
+  build-images:
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.event_name != 'pull_request'
+    outputs:
+      core-image: ${{ steps.meta-core.outputs.tags }}
+      ai-image: ${{ steps.meta-ai.outputs.tags }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata for Core Engine
+      id: meta-core
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-core
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+    
+    - name: Build and push Core Engine image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./core
+        file: ./deploy/Dockerfile.core
+        push: true
+        tags: ${{ steps.meta-core.outputs.tags }}
+        labels: ${{ steps.meta-core.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Extract metadata for AI Engine
+      id: meta-ai
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ai
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+    
+    - name: Build and push AI Engine image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ai-engine
+        file: ./deploy/Dockerfile.ai
+        push: true
+        tags: ${{ steps.meta-ai.outputs.tags }}
+        labels: ${{ steps.meta-ai.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment"
+        # Deploy script here
+        # docker-compose -f docker-compose.staging.yml up -d
+    
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests"
+        # Smoke test script here
+
+  # Deploy to Production
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.event_name == 'release'
+    environment: production
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment"
+        # Deploy script here
+        # docker-compose -f docker-compose.prod.yml up -d
+    
+    - name: Run health checks
+      run: |
+        echo "Running production health checks"
+        # Health check script here
+    
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}

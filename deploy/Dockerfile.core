@@ -1,0 +1,75 @@
+# GhostAntivirus Core Engine Dockerfile
+FROM rust:1.75-slim as builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Cargo files
+COPY Cargo.toml Cargo.lock ./
+
+# Create dummy main.rs to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+
+# Build dependencies
+RUN cargo build --release && rm -rf src
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN cargo build --release
+
+# Runtime image
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -r -s /bin/false ghost
+
+# Create directories
+RUN mkdir -p /var/lib/ghost-antivirus \
+             /var/log/ghost-antivirus \
+             /etc/ghost-antivirus
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/ghost-core /usr/local/bin/
+
+# Copy configuration
+COPY config/default.toml /etc/ghost-antivirus/config.toml
+
+# Set permissions
+RUN chown -R ghost:ghost /var/lib/ghost-antivirus \
+                     /var/log/ghost-antivirus \
+                     /etc/ghost-antivirus
+
+# Switch to non-root user
+USER ghost
+
+# Expose port (updated for API server)
+EXPOSE 8080
+
+# Health check (updated for API server)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Environment variables
+ENV RUST_LOG=info \
+    API_HOST=0.0.0.0 \
+    API_PORT=8080 \
+    JWT_SECRET=change-this-in-production
+
+# Run the application
+CMD ["ghost-core"]

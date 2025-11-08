@@ -1,0 +1,70 @@
+{
+  "name": "ghost-antivirus-web-ui",
+  "version": "3.0.0",
+  "description": "GhostAntivirus Web Dashboard - Next-generation antivirus management interface",
+  "main": "src/index.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.15.0",
+    "@mui/material": "^5.14.5",
+    "@mui/icons-material": "^5.14.3",
+    "@mui/x-charts": "^6.0.0",
+    "@mui/x-data-grid": "^6.10.1",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "axios": "^1.5.0",
+    "recharts": "^2.8.0",
+    "date-fns": "^2.30.0",
+    "react-query": "^3.39.3",
+    "socket.io-client": "^4.7.2",
+    "react-hook-form": "^7.45.4",
+    "react-hot-toast": "^2.4.1",
+    "zustand": "^4.4.1",
+    "framer-motion": "^10.16.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vitest": "^0.34.4",
+    "@vitest/ui": "^0.34.4",
+    "jsdom": "^22.1.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^6.1.2"
+  },
+  "keywords": [
+    "antivirus",
+    "security",
+    "dashboard",
+    "react",
+    "typescript",
+    "mui"
+  ],
+  "author": "GhostAntivirus Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ghostantivirus/web-ui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ghostantivirus/web-ui/issues"
+  },
+  "homepage": "https://ghostantivirus.com"
+}

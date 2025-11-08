@@ -1,0 +1,282 @@
+version: '3.8'
+
+services:
+  # Core Engine API
+  core-engine:
+    build:
+      context: ./core
+      dockerfile: ../deploy/Dockerfile.core
+    container_name: ghost-core-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - DATABASE_URL=sqlite:///var/lib/ghost-antivirus/ghost.db
+    volumes:
+      - quarantine-data:/var/lib/ghost-antivirus
+      - core-logs:/var/log/ghost-antivirus
+      - ./config:/etc/ghost-antivirus:ro
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # AI Engine
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: ../deploy/Dockerfile.ai
+    container_name: ghost-ai-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AI_API_HOST=0.0.0.0
+      - AI_API_PORT=8000
+      - AI_MODEL_PATH=/app/models
+      - AI_LOG_LEVEL=info
+    volumes:
+      - ai-models:/app/models
+      - ai-logs:/app/logs
+      - ai-data:/app/data
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # Network Guard
+  network-guard:
+    build:
+      context: ./network-guard
+      dockerfile: ../deploy/Dockerfile.network
+    container_name: ghost-network-guard
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=9000
+      - LOG_LEVEL=info
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - network-logs:/var/log/ghost-network
+      - network-data:/var/lib/ghost-network
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Web Dashboard
+  web-dashboard:
+    build:
+      context: ./web-ui
+      dockerfile: ../deploy/Dockerfile.web
+    container_name: ghost-web-dashboard
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - VITE_CORE_ENGINE_URL=${CORE_ENGINE_URL:-http://localhost:8080}
+      - VITE_AI_ENGINE_URL=${AI_ENGINE_URL:-http://localhost:8000}
+      - VITE_NETWORK_GUARD_URL=${NETWORK_GUARD_URL:-http://localhost:9000}
+      - VITE_WS_URL=${WS_URL:-ws://localhost:8080/ws}
+    depends_on:
+      core-engine:
+        condition: service_healthy
+      ai-engine:
+        condition: service_healthy
+      network-guard:
+        condition: service_healthy
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - web-logs:/var/log/nginx
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # PostgreSQL Database (Production)
+  postgres:
+    image: postgres:16-alpine
+    container_name: ghost-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-ghostantivirus}
+      - POSTGRES_USER=${POSTGRES_USER:-ghost}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-this-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Redis Cache (Production)
+  redis:
+    image: redis:7-alpine
+    container_name: ghost-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change-this-password}
+    volumes:
+      - redis-data:/data
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Prometheus Monitoring (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ghost-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - ghost-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Grafana Monitoring (Optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ghost-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - ghost-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  ghost-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  quarantine-data:
+    driver: local
+  core-logs:
+    driver: local
+  ai-models:
+    driver: local
+  ai-logs:
+    driver: local
+  ai-data:
+    driver: local
+  network-logs:
+    driver: local
+  network-data:
+    driver: local
+  web-logs:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

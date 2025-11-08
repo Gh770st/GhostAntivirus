@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostAntivirus</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <img src="icons/icon32.png" alt="GhostAntivirus" />
+                <span class="app-name">GhostAntivirus</span>
+            </div>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot protected"></span>
+                <span class="status-text">Protected</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Protection Toggle -->
+            <div class="section">
+                <div class="toggle-section">
+                    <div class="toggle-info">
+                        <h3>Real-time Protection</h3>
+                        <p>Active security monitoring</p>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="protectionToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="stats-section">
+                <h3>Protection Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="threatsBlocked">0</div>
+                        <div class="stat-label">Threats Blocked</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="scansPerformed">0</div>
+                        <div class="stat-label">Scans Performed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="adsBlocked">0</div>
+                        <div class="stat-label">Ads Blocked</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Page Scan -->
+            <div class="section" id="pageScanSection">
+                <h3>Current Page</h3>
+                <div class="page-info">
+                    <div class="page-url" id="currentPageUrl">Loading...</div>
+                    <div class="page-status" id="pageStatus">
+                        <span class="scan-indicator scanning"></span>
+                        <span class="scan-text">Scanning...</span>
+                    </div>
+                </div>
+                <div class="scan-result" id="scanResult"></div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="action-btn primary" id="scanCurrentPageBtn">
+                    <span class="btn-icon">🔍</span>
+                    Scan Current Page
+                </button>
+                <button class="action-btn secondary" id="reportSiteBtn">
+                    <span class="btn-icon">⚠️</span>
+                    Report Site
+                </button>
+            </div>
+
+            <!-- Protection Features -->
+            <div class="features-section">
+                <h3>Protection Features</h3>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span class="feature-name">Anti-Phishing</span>
+                            <span class="feature-status" id="antiPhishingStatus">Active</span>
+                        </div>
+                        <label class="toggle-switch small">
+                            <input type="checkbox" id="antiPhishingToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span class="feature-name">Ad Blocking</span>
+                            <span class="feature-status" id="adBlockingStatus">Active</span>
+                        </div>
+                        <label class="toggle-switch small">
+                            <input type="checkbox" id="adBlockingToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span class="feature-name">Tracker Blocking</span>
+                            <span class="feature-status" id="trackerBlockingStatus">Active</span>
+                        </div>
+                        <label class="toggle-switch small">
+                            <input type="checkbox" id="trackerBlockingToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span class="feature-name">Cookie Protection</span>
+                            <span class="feature-status" id="cookieProtectionStatus">Active</span>
+                        </div>
+                        <label class="toggle-switch small">
+                            <input type="checkbox" id="cookieProtectionToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <button class="footer-btn" id="settingsBtn">
+                <span class="btn-icon">⚙️</span>
+                Settings
+            </button>
+            <button class="footer-btn" id="dashboardBtn">
+                <span class="btn-icon">📊</span>
+                Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
