@@ -56,7 +56,8 @@ pub async fn apply_update(
     let mut engine = state.engine.write().await;
     
     // Apply the update using the updater
-    match engine.updater.apply_update(&payload.version, payload.auto_restart).await {
+    // Apply the update
+    match engine.updater.apply_update_async(&payload.version, payload.auto_restart).await {
         Ok(_) => {
             success_response(serde_json::json!({
                 "message": "Update applied successfully",

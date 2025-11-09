@@ -22,9 +22,9 @@ pub async fn get_settings(State(state): State<AppState>) -> Response {
     let settings = SettingsResponse {
         real_time_protection: engine.monitor.is_running(),
         auto_scan: config.scanner.auto_scan,
-        scan_schedule: config.scanner.schedule.clone(),
-        auto_update: config.updater.auto_update,
-        quarantine_days: config.quarantine.retention_days,
+        scan_schedule: config.scanner.schedule.clone().unwrap_or_default(),
+        auto_update: config.updater.enabled,
+        quarantine_days: config.quarantine.auto_delete_days,
         notification_enabled: config.notifications.enabled,
         ai_enabled: config.ai.enabled,
         network_monitoring: engine.network.is_monitoring(),
@@ -51,7 +51,7 @@ pub async fn update_settings(
                 );
             }
         } else if !real_time_protection && engine.monitor.is_running() {
-            engine.monitor.stop().await;
+            let _ = engine.monitor.stop().await;
         }
     }
     

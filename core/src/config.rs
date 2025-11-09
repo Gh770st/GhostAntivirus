@@ -17,6 +17,8 @@ pub struct Config {
     pub ai: AIConfig,
     pub updates: UpdatesConfig,
     pub network: NetworkConfig,
+    #[serde(default)]
+    pub notifications: NotificationConfig,
 }
 
 /// General application settings
@@ -40,6 +42,10 @@ pub struct ScannerConfig {
     pub excluded_extensions: Vec<String>,
     pub excluded_paths: Vec<PathBuf>,
     pub thread_pool_size: usize,
+    #[serde(default)]
+    pub auto_scan: bool,
+    #[serde(default)]
+    pub schedule: Option<String>,
 }
 
 /// Process monitoring configuration
@@ -120,7 +126,8 @@ impl Default for Config {
             ai: AIConfig::default(),
             updates: UpdatesConfig::default(),
             network: NetworkConfig::default(),
-        }
+                    notifications: NotificationConfig::default(),
+}
     }
 }
 
@@ -155,7 +162,9 @@ impl Default for ScannerConfig {
                 PathBuf::from("/dev"),
             ],
             thread_pool_size: num_cpus::get(),
-        }
+                    auto_scan: false,
+            schedule: None,
+}
     }
 }
 
@@ -235,6 +244,24 @@ impl Default for UpdaterConfig {
             update_url: "https://updates.ghostantivirus.com".to_string(),
             update_path: "/var/lib/ghost-antivirus/updates".to_string(),
             check_interval: 86400, // 24 hours
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationConfig {
+    pub enabled: bool,
+    pub email: Option<String>,
+    pub webhook_url: Option<String>,
+}
+
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            email: None,
+            webhook_url: None,
         }
     }
 }

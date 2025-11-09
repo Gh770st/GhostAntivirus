@@ -3,7 +3,7 @@ use axum::{
     extract::State,
     response::Response,
 };
-use sysinfo::{System, SystemExt, CpuExt, NetworkExt, NetworksExt};
+use sysinfo::{System, SystemExt, CpuExt, NetworkExt};
 
 use crate::api::{
     AppState,
@@ -13,7 +13,7 @@ use super::success_response;
 
 /// Get system information
 pub async fn get_info(State(state): State<AppState>) -> Response {
-    let engine = state.engine.read().await;
+    let _engine = state.engine.read().await;
     
     // Get actual system info using sysinfo
     let mut sys = System::new_all();
@@ -34,7 +34,7 @@ pub async fn get_info(State(state): State<AppState>) -> Response {
 
 /// Get system statistics
 pub async fn get_stats(State(state): State<AppState>) -> Response {
-    let engine = state.engine.read().await;
+    let _engine = state.engine.read().await;
     
     // Get actual system stats using sysinfo
     let mut sys = System::new_all();
@@ -68,8 +68,8 @@ pub async fn get_stats(State(state): State<AppState>) -> Response {
     }
     
     let stats = SystemStatsResponse {
-        cpu_usage: cpu_usage as f64,
-        memory_usage,
+        cpu_usage: cpu_usage,
+        memory_usage: memory_usage as f32,
         disk_usage,
         network_usage: NetworkUsage {
             bytes_sent: total_bytes_sent,

@@ -4,7 +4,7 @@
 //! including ransomware, data exfiltration, and privilege escalation.
 
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
@@ -100,6 +100,7 @@ pub struct DetectedThreat {
 }
 
 /// Behavior Analyzer
+#[allow(dead_code)]
 pub struct BehaviorAnalyzer {
     patterns: Vec<BehaviorPattern>,
     risk_threshold: f32,
@@ -370,8 +371,10 @@ impl BehaviorAnalyzer {
     /// Add detected threat
     pub fn add_threat(&self, threat: DetectedThreat) {
         let mut threats = self.detected_threats.lock().unwrap();
+        let threat_name = threat.threat_name.clone();
+        let file_path = threat.file_path.clone();
         threats.push(threat);
-        info!("Threat added: {} - {}", threat.threat_name, threat.file_path.display());
+        info!("Threat added: {} - {}", threat_name, file_path.display());
     }
     
     /// Get all detected threats

@@ -8,7 +8,13 @@ pub mod network;
 pub mod settings;
 pub mod system;
 pub mod updates;
-pub mod websocket;
+
+use std::time::{SystemTime, UNIX_EPOCH};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref START_TIME: SystemTime = SystemTime::now();
+}
 
 use axum::{
     response::{IntoResponse, Response},
@@ -24,7 +30,9 @@ pub async fn health_check() -> Response {
     let response = HealthCheckResponse {
         status: "healthy".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        uptime: 0, // TODO: Calculate actual uptime
+        uptime: START_TIME.elapsed()
+            .unwrap_or_default()
+            .as_secs(),
         services: ServiceStatus {
             scanner: true,
             ai_engine: true,

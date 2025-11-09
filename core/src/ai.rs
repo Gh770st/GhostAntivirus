@@ -46,6 +46,7 @@ pub struct ThreatReport {
 }
 
 /// AI Integration Manager
+#[allow(dead_code)]
 pub struct AIIntegration {
     api_url: String,
     client: reqwest::blocking::Client,
@@ -60,6 +61,39 @@ pub struct AIIntegration {
 struct CachedResponse {
     response: AIResponse,
     cached_at: SystemTime,
+}
+
+/// Features extracted from a file for AI analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileFeatures {
+    pub file_hash: String,
+    pub file_size: u64,
+    pub file_extension: String,
+    pub pe_features: Option<PEFeatures>,
+    pub string_patterns: Vec<String>,
+    pub entropy: f64,
+}
+
+/// PE (Portable Executable) file features
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
+pub struct PEFeatures {
+    pub is_pe: bool,
+    pub has_pe_header: bool,
+    pub is_dll: bool,
+    pub is_exe: bool,
+    pub has_imports: bool,
+    pub has_exports: bool,
+}
+
+/// AI analysis result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalysisResult {
+    pub is_threat: bool,
+    pub threat_type: String,
+    pub severity: String,
+    pub confidence: f64,
+    pub reason: String,
 }
 
 impl AIIntegration {
@@ -157,6 +191,69 @@ impl AIIntegration {
               response.is_malicious, response.confidence);
         
         Ok(response)
+    }
+    
+    /// Analyze file using pre-extracted features
+    pub async fn analyze_features(&self, features: &FileFeatures) -> Result<Option<AnalysisResult>> {
+        if !self.enabled {
+            return Ok(None);
+        }
+        
+        debug!("Analyzing features for file: {} (size: {})", features.file_hash, features.file_size);
+        
+        // Simple heuristic analysis (in production, use real ML models)
+        let mut threat_score = 0.0;
+        let mut reasons = Vec::new();
+        
+        // Check entropy (high entropy often indicates packing/encryption)
+        if features.entropy > 7.5 {
+            threat_score += 0.3;
+            reasons.push("High entropy (possible packing)".to_string());
+        }
+        
+        // Check PE features
+        if let Some(pe) = &features.pe_features {
+            if pe.is_pe && !pe.has_pe_header {
+                threat_score += 0.4;
+                reasons.push("Invalid PE header".to_string());
+            }
+        }
+        
+        // Check suspicious strings
+        let suspicious_count = features.string_patterns.len();
+        if suspicious_count > 5 {
+            threat_score += 0.2 * (suspicious_count as f64 / 10.0);
+            reasons.push(format!("{} suspicious strings", suspicious_count));
+        }
+        
+        // Check file size (very small executables are suspicious)
+        if features.file_extension == "exe" && features.file_size < 10240 {
+            threat_score += 0.3;
+            reasons.push("Very small executable".to_string());
+        }
+        
+        // Determine if it's a threat
+        if threat_score > 0.5 {
+            Ok(Some(AnalysisResult {
+                is_threat: true,
+                threat_type: if features.pe_features.is_some() {
+                    "Malware"
+                } else {
+                    "Suspicious"
+                }.to_string(),
+                severity: if threat_score > 0.8 {
+                    "High".to_string()
+                } else if threat_score > 0.6 {
+                    "Medium".to_string()
+                } else {
+                    "Low".to_string()
+                },
+                confidence: threat_score.min(1.0),
+                reason: reasons.join("; "),
+            }))
+        } else {
+            Ok(None)
+        }
     }
     
     /// Analyze multiple files in batch

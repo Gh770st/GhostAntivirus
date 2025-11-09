@@ -49,13 +49,13 @@ chrono = { version = "0.4", features = ["serde"] }
 config = "0.13"
 
 # HTTP client for updates
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "blocking"] }
 
 # Async trait
 async-trait = "0.1"
 
 # Web framework for REST API
-axum = "0.7"
+axum = { version = "0.7", features = ["ws"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
 
@@ -81,6 +81,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Lazy static for global state
 lazy_static = "1.4"
+futures = "0.3"
+governor = "0.6"
+memmap2 = "0.9"
 
 # Cross-platform
 [target.'cfg(windows)'.dependencies]

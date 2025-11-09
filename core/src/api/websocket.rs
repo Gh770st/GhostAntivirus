@@ -14,10 +14,10 @@ use tokio::sync::RwLock;
 
 use crate::api::{
     AppState,
-    models::{WebSocketMessage, ScanProgressUpdate, ThreatAlert, ThreatSeverity},
+    models::{WebSocketMessage, ScanProgressUpdate, ThreatAlert},
 };
 
-/// Global broadcast channel for WebSocket messages
+// Global broadcast channel for WebSocket messages
 lazy_static::lazy_static! {
     static ref WS_BROADCAST: Arc<RwLock<Option<broadcast::Sender<String>>>> = Arc::new(RwLock::new(None));
 }
@@ -96,7 +96,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             
             if scanner_stats.is_scanning {
                 let progress = ScanProgressUpdate {
-                    progress: scanner_stats.progress_percentage as f64,
+                    progress: scanner_stats.progress_percentage,
                     current_file: "Scanning...".to_string(), // Could be enhanced to show actual file
                     files_scanned: scanner_stats.total_files_scanned,
                     threats_found: scanner_stats.threats_detected,

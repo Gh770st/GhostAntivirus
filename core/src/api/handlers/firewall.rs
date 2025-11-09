@@ -1,11 +1,11 @@
 // Firewall handlers
+use std::time::SystemTime;
 use axum::{
     extract::{State, Path},
     response::Response,
     http::StatusCode,
     Json,
 };
-use chrono::{Utc, DateTime};
 
 use crate::api::{
     AppState,
@@ -81,6 +81,7 @@ pub async fn add_rule(
         RuleAction::Allow => crate::firewall::Action::Allow,
         RuleAction::Deny => crate::firewall::Action::Deny,
         RuleAction::Block => crate::firewall::Action::Block,
+        RuleAction::Log => crate::firewall::Action::Allow, // Map Log to Allow for now
     };
     
     // Convert API protocol to internal protocol
@@ -88,23 +89,33 @@ pub async fn add_rule(
         Protocol::TCP => Some(crate::network::Protocol::TCP),
         Protocol::UDP => Some(crate::network::Protocol::UDP),
         Protocol::ICMP => Some(crate::network::Protocol::ICMP),
+        Protocol::All => Some(crate::network::Protocol::TCP), // Default to TCP for All
     };
     
     // Parse IPs if provided
     let source_ip = payload.source_ip.and_then(|ip| ip.parse().ok());
     let dest_ip = payload.dest_ip.and_then(|ip| ip.parse().ok());
     
-    // Add rule to firewall
-    match engine.firewall.add_rule(
-        payload.name,
+    // Create firewall rule
+    use uuid::Uuid;
+    use std::time::SystemTime;
+    let rule = crate::firewall::FirewallRule {
+        id: Uuid::new_v4().to_string(),
+        name: payload.name,
         action,
+        protocol,  // protocol is already Option<Protocol>
         source_ip,
+        source_port: payload.source_port,
         dest_ip,
-        payload.source_port,
-        payload.dest_port,
-        protocol,
-        payload.priority.unwrap_or(100),
-    ) {
+        dest_port: payload.dest_port,
+        priority: payload.priority,
+        enabled: true,
+        created_at: SystemTime::now(),
+        updated_at: SystemTime::now(),
+    };
+    
+    // Add rule to firewall
+    match engine.firewall.add_rule(rule) {
         Ok(rule_id) => {
             success_response(serde_json::json!({
                 "message": "Rule added successfully",
@@ -130,10 +141,39 @@ pub async fn update_rule(
         RuleAction::Allow => crate::firewall::Action::Allow,
         RuleAction::Deny => crate::firewall::Action::Deny,
         RuleAction::Block => crate::firewall::Action::Block,
+        RuleAction::Log => crate::firewall::Action::Allow, // Map Log to Allow for now
     };
     
     // Update rule
-    match engine.firewall.update_rule(&id, payload.name, action, payload.enabled.unwrap_or(true)) {
+    // Get existing rule and update it
+    let existing_rule = match engine.firewall.get_rule(&id) {
+        Some(rule) => rule,
+        None => {
+            return error_response(StatusCode::NOT_FOUND, "Rule not found".to_string());
+        }
+    };
+    
+    let updated_rule = crate::firewall::FirewallRule {
+        id: existing_rule.id.clone(),
+        name: payload.name,
+        action,
+        protocol: Some(match payload.protocol {
+            crate::api::models::Protocol::TCP => crate::network::Protocol::TCP,
+            crate::api::models::Protocol::UDP => crate::network::Protocol::UDP,
+            crate::api::models::Protocol::ICMP => crate::network::Protocol::ICMP,
+            crate::api::models::Protocol::All => crate::network::Protocol::TCP, // Default to TCP for All
+        }),
+        source_ip: payload.source_ip.and_then(|ip| ip.parse().ok()),
+        source_port: payload.source_port,
+        dest_ip: payload.dest_ip.and_then(|ip| ip.parse().ok()),
+        dest_port: payload.dest_port,
+        priority: payload.priority,
+        enabled: existing_rule.enabled,
+        created_at: existing_rule.created_at,
+        updated_at: SystemTime::now(),
+    };
+    
+    match engine.firewall.update_rule(&id, updated_rule) {
         Ok(_) => {
             success_response(serde_json::json!({
                 "message": "Rule updated successfully",

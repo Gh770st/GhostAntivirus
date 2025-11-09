@@ -3,10 +3,8 @@ use axum::{
     extract::{State, Path},
     response::Response,
     http::StatusCode,
-    Json,
 };
 use chrono::{Utc, DateTime};
-use std::path::PathBuf;
 
 use crate::api::{
     AppState,

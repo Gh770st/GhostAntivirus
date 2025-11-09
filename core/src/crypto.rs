@@ -4,7 +4,7 @@
 
 use std::path::Path;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::Read;
 use anyhow::{Result, Context, bail};
 use log::{info, debug};
 use sha2::{Sha256, Digest};

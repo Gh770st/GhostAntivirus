@@ -106,7 +106,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/updates/apply", post(handlers::updates::apply_update))
         
         // WebSocket endpoint for real-time updates
-        .route("/ws", get(handlers::websocket::ws_handler))
+        .route("/ws", get(websocket::ws_handler))
         
         // Add middleware
         .layer(TraceLayer::new_for_http())

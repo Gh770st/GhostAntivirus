@@ -109,7 +109,7 @@ impl Scanner {
     }
     
     /// Start a new scan and return scan ID
-    pub async fn start_scan(&amp;self, path: &amp;str, scan_type: ScanType, deep_scan: bool) -> Result<String> {
+    pub async fn start_scan(&self, path: &str, scan_type: ScanType, deep_scan: bool) -> Result<String> {
         // Check if a scan is already running
         {
             let state = self.current_state.lock().unwrap();
@@ -153,7 +153,7 @@ impl Scanner {
             let result = match scan_type {
                 ScanType::Quick => scanner.quick_scan().await,
                 ScanType::Full => scanner.full_scan().await,
-                ScanType::Custom(_) => scanner.scan_path(&amp;path_owned).await,
+                ScanType::Custom(_) => scanner.scan_path(&path_owned).await,
             };
             
             // Update final stats
@@ -176,7 +176,7 @@ impl Scanner {
     }
     
     /// Stop the current scan
-    pub async fn stop_scan(&amp;self) -> Result<()> {
+    pub async fn stop_scan(&self) -> Result<()> {
         let mut state = self.current_state.lock().unwrap();
         if state.is_none() {
             return Err(anyhow!("No scan is currently running"));
@@ -193,7 +193,7 @@ impl Scanner {
     }
     
     /// Pause the current scan
-    pub async fn pause_scan(&amp;self) -> Result<()> {
+    pub async fn pause_scan(&self) -> Result<()> {
         let mut state = self.current_state.lock().unwrap();
         match state.as_mut() {
             Some(s) => {
@@ -206,7 +206,7 @@ impl Scanner {
     }
     
     /// Resume the paused scan
-    pub async fn resume_scan(&amp;self) -> Result<()> {
+    pub async fn resume_scan(&self) -> Result<()> {
         let mut state = self.current_state.lock().unwrap();
         match state.as_mut() {
             Some(s) => {
@@ -222,16 +222,16 @@ impl Scanner {
     }
     
     /// Get current scan statistics
-    pub fn get_statistics(&amp;self) -> ScanStats {
+    pub fn get_statistics(&self) -> ScanStats {
         self.stats.lock().unwrap().clone()
     }
     
     /// Clone scanner for async operations
-    fn clone_for_async(&amp;self) -> Self {
+    fn clone_for_async(&self) -> Self {
         Self {
             config: self.config.clone(),
-            stats: Arc::clone(&amp;self.stats),
-            current_state: Arc::clone(&amp;self.current_state),
+            stats: Arc::clone(&self.stats),
+            current_state: Arc::clone(&self.current_state),
         }
     }
     
@@ -428,11 +428,57 @@ impl Scanner {
         
         // AI-based detection
         if self.config.scanner.enable_ai {
-            // TODO: Implement AI detection
-            debug!("AI detection not yet implemented for: {}", file_path.display());
+            // AI-based detection
+            let mut ai_integration = crate::ai::AIIntegration::new(&self.config)?;
+            match ai_integration.analyze_file(file_path) {
+                Ok(ai_response) if ai_response.is_malicious => {
+                    return Ok(Some(ThreatInfo {
+                        file_path: file_path.to_path_buf(),
+                        threat_type: ThreatType::Unknown,
+                        threat_name: ai_response.threat_type.unwrap_or_else(|| "AI.Detected".to_string()),
+                        severity: if ai_response.confidence > 0.8 { Severity::High } 
+                                 else if ai_response.confidence > 0.6 { Severity::Medium } 
+                                 else { Severity::Low },
+                        hash: hash.to_string(),
+                           size: file_size,
+                    }));
+                }
+                Ok(_) => {
+                    debug!("AI analysis completed, no threat detected");
+                }
+                Err(e) => {
+                    warn!("AI analysis failed for {}: {}", file_path.display(), e);
+                }
+            }
         }
         
         Ok(None)
+    }
+    
+    /// Parse threat type from string
+    fn parse_threat_type(&self, threat_type: &str) -> ThreatType {
+        match threat_type.to_lowercase().as_str() {
+            "virus" => ThreatType::Virus,
+            "trojan" => ThreatType::Trojan,
+            "worm" => ThreatType::Worm,
+            "spyware" => ThreatType::Spyware,
+            "adware" => ThreatType::Adware,
+            "rootkit" => ThreatType::Rootkit,
+            "ransomware" => ThreatType::Ransomware,
+            "pua" => ThreatType::Adware,
+            _ => ThreatType::Unknown,
+        }
+    }
+    
+    /// Convert severity number to Severity enum
+    fn severity_from_number(&self, severity: u8) -> Severity {
+        match severity {
+            1..=3 => Severity::Low,
+            4..=6 => Severity::Medium,
+            7..=8 => Severity::High,
+            9..=10 => Severity::Critical,
+            _ => Severity::Medium,
+        }
     }
     
     /// Check if file should be scanned
@@ -478,11 +524,21 @@ impl Scanner {
             }));
         }
         
-        // TODO: Implement real signature database lookup
-        // For now, just check some known malicious patterns
-        let content = fs::read(file_path)?;
+        // Real signature database lookup
+        let signature_db = crate::signatures::SignatureDatabase::new(self.config.clone())?;
+        if let Some(signature) = signature_db.scan_file(file_path)? {
+            return Ok(Some(ThreatInfo {
+                file_path: file_path.to_path_buf(),
+                threat_type: self.parse_threat_type(&signature.threat_type),
+                threat_name: signature.threat_name.clone(),
+                severity: self.severity_from_number(signature.severity),
+                hash: signature.hash.clone(),
+                size,
+            }));
+        }
         
-        // Simple pattern matching for demonstration
+        // Fallback pattern matching for demonstration
+        let content = fs::read(file_path)?;
         if content.windows(4).any(|window| window == b"EVIL") {
             return Ok(Some(ThreatInfo {
                 file_path: file_path.to_path_buf(),
@@ -565,6 +621,6 @@ mod tests {
         temp_file.write_all(b"test content").unwrap();
         
         let hash = scanner.calculate_file_hash(temp_file.path()).unwrap();
-        assert_eq!(hash, "6a9ee6bf847a30bff0806c59430de0d749d4ea5a9b5d88b85f9f376d6d6674a1");
+        assert_eq!(hash, "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72");
     }
 }

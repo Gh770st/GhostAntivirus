@@ -4,7 +4,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use sysinfo::{System, SystemExt, CpuExt, DiskExt, NetworkExt, ProcessExt};
+use sysinfo::{System, SystemExt, CpuExt, DiskExt, NetworkExt, NetworksExt};
 use std::sync::{Arc, Mutex};
 
 /// System monitor for tracking resource usage
@@ -109,7 +109,7 @@ impl SystemMonitor {
         let process_count = system.processes().len();
 
         // System uptime
-        let uptime = System::uptime();
+        let uptime = system.uptime();
 
         Ok(SystemMetrics {
             cpu_usage,
@@ -172,7 +172,8 @@ impl SystemMonitor {
 
     /// Get system uptime in seconds
     pub fn get_uptime(&self) -> Result<u64> {
-        Ok(System::uptime())
+        let system = self.system.lock().unwrap();
+        Ok(system.uptime())
     }
 
     /// Get process count

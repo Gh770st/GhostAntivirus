@@ -211,8 +211,9 @@ impl UpdateManager {
         let mut buffer = [0u8; 8192];
         
         loop {
-            let bytes_read = response.copy_to(&mut buffer[..])
-                .context("Failed to read update data")? as usize;
+            use std::io::Read;
+            let bytes_read = response.read(&mut buffer)
+                .context("Failed to read update data")?;
             
             if bytes_read == 0 {
                 break;
@@ -304,7 +305,7 @@ impl UpdateManager {
     }
     
     /// Apply engine update
-    fn apply_engine_update(&self, path: &Path) -> Result<()> {
+    fn apply_engine_update(&self, _path: &Path) -> Result<()> {
         debug!("Applying engine update");
         
         // In production, this would:
@@ -398,7 +399,7 @@ impl UpdateManager {
     }
     
     /// Apply update (async version for API compatibility)
-    pub async fn apply_update(&mut self, version: &str, auto_restart: bool) -> Result<()> {
+    pub async fn apply_update_async(&mut self, version: &str, auto_restart: bool) -> Result<()> {
         info!("Applying update to version: {}", version);
         
         // In a real implementation, this would:

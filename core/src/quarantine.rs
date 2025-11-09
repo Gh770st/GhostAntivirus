@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, Context, bail};
-use log::{info, warn, debug};
+use log::{info, warn};
 use sha2::{Sha256, Digest};
 
 /// Quarantine entry identifier
@@ -410,12 +410,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let mut manager = QuarantineManager::new(temp_dir.path()).unwrap();
         
-        // Create and quarantine multiple files
+        // Create and quarantine multiple files with DIFFERENT content
         for i in 0..3 {
+            let content = format!("Test content {}", i);
             let test_file = create_test_file(
                 temp_dir.path(), 
                 &format!("test{}.txt", i), 
-                b"Test"
+                content.as_bytes()
             );
             manager.quarantine_file(&test_file, "Test Threat").unwrap();
         }

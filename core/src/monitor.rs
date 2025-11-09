@@ -1,13 +1,13 @@
 //! Process monitoring for real-time protection
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tokio::time::interval;
-use log::{info, warn, debug, error};
+use log::{info, warn, error};
 use sysinfo::{System, SystemExt, ProcessExt, PidExt};
 use crate::config::Config;
 
@@ -128,11 +128,11 @@ impl ProcessMonitor {
             let process_info = ProcessInfo {
                 pid: pid.as_u32(),
                 name: process.name().to_string(),
-                path: process.exe().map(|p| p.to_path_buf()),
+                path: Some(process.exe().to_path_buf()),
                 cmd: process.cmd().to_vec(),
                 start_time: process.start_time(),
                 parent_pid: process.parent().map(|p| p.as_u32()),
-                user_id: process.user_id(),
+                user_id: process.user_id().map(|uid| **uid as u32),
                 memory_kb: process.memory(),
                 cpu_percent: process.cpu_usage(),
                 threat_score: 0, // Will be calculated
@@ -204,7 +204,7 @@ impl ProcessMonitor {
         process_history: &Arc<Mutex<HashMap<u32, ProcessInfo>>>,
         config: &Config,
     ) -> Result<()> {
-        let mut sys = system.lock().unwrap();
+        let sys = system.lock().unwrap();
         let mut history = process_history.lock().unwrap();
         let mut new_processes = Vec::new();
         
@@ -216,11 +216,11 @@ impl ProcessMonitor {
                 let process_info = ProcessInfo {
                     pid: pid_u32,
                     name: process.name().to_string(),
-                    path: process.exe().map(|p| p.to_path_buf()),
+                    path: Some(process.exe().to_path_buf()),
                     cmd: process.cmd().to_vec(),
                     start_time: process.start_time(),
                     parent_pid: process.parent().map(|p| p.as_u32()),
-                    user_id: process.user_id(),
+                    user_id: process.user_id().map(|uid| **uid as u32),
                     memory_kb: process.memory(),
                     cpu_percent: process.cpu_usage(),
                     threat_score: 0,
@@ -252,7 +252,12 @@ impl ProcessMonitor {
                 warn!("Suspicious process detected: {} (PID: {}, Score: {})", 
                       process_info.name, process_info.pid, threat_score);
                 
-                // TODO: Send alert or take action
+                // Log threat detection
+                info!("Threat detected - Process: {} (PID: {}, Score: {})", 
+                     process_info.name, process_info.pid, threat_score);
+                
+                // In production, send alert via WebSocket or notification system
+                // For now, just log the detection
             }
             
             // Update threat score in history

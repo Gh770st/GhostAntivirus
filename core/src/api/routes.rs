@@ -125,7 +125,7 @@ fn update_routes() -> Router<AppState> {
 
 fn websocket_routes() -> Router<AppState> {
     use axum::routing::get;
-    use crate::api::handlers::websocket;
+    use crate::api::websocket;
     
     Router::new()
         .route("/ws", get(websocket::ws_handler))

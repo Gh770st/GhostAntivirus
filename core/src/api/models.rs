@@ -54,7 +54,7 @@ pub struct StartScanRequest {
     pub deep_scan: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ScanType {
     Quick,
@@ -188,6 +188,7 @@ pub struct FirewallRule {
 pub enum RuleAction {
     Allow,
     Block,
+    Deny,
     Log,
 }
 

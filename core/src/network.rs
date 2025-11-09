@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::{Duration, SystemTime};
 use serde::{Deserialize, Serialize};
-use anyhow::{Result, Context};
-use log::{info, warn, debug};
+use anyhow::Result;
+use log::{info, warn};
 
 use crate::config::Config;
 
@@ -61,6 +61,7 @@ pub struct TrafficStats {
 }
 
 /// Network Monitor
+#[allow(dead_code)]
 pub struct NetworkMonitor {
     connections: HashMap<String, Connection>,
     suspicious_ips: HashSet<IpAddr>,

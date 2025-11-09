@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 
 /// Update manager for handling software and signature updates
+#[allow(dead_code)]
 pub struct UpdateManager {
     update_url: String,
     current_version: String,
@@ -125,7 +126,7 @@ impl UpdateManager {
     }
 
     /// Schedule automatic updates
-    pub async fn enable_auto_updates(&self, interval_hours: u64) -> Result<()> {
+    pub async fn enable_auto_updates(&self, _interval_hours: u64) -> Result<()> {
         // In a real implementation, this would set up a background task
         // to check for updates at the specified interval
         

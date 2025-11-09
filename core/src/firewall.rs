@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
-use anyhow::{Result, Context, bail};
+use anyhow::{Result, bail};
 use log::{info, warn, debug};
 
 use crate::network::{Connection, Protocol};
@@ -310,7 +310,7 @@ impl FirewallIntegration {
     }
     
     /// Add a new rule with parameters (helper for API)
-    pub fn add_rule(
+    pub fn add_rule_with_params(
         &mut self,
         name: String,
         action: Action,
@@ -350,7 +350,7 @@ impl FirewallIntegration {
     }
     
     /// Update an existing rule (simplified for API)
-    pub fn update_rule(
+    pub fn update_rule_simple(
         &mut self,
         id: &RuleId,
         name: String,

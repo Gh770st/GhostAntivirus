@@ -11,7 +11,7 @@ use crate::api::{
     AppState,
     models::{
         ScanStatsResponse, StartScanRequest, ScanResultsResponse, 
-        ScanResult, ScanType,
+        ScanResult,
     },
 };
 use super::{error_response, success_response};
@@ -53,11 +53,18 @@ pub async fn start_scan(
         return error_response(StatusCode::BAD_REQUEST, "Path does not exist".to_string());
     }
 
+    // Convert API ScanType to scanner ScanType
+    let scan_type = match payload.scan_type {
+        crate::api::models::ScanType::Quick => crate::scanner::ScanType::Quick,
+        crate::api::models::ScanType::Full => crate::scanner::ScanType::Full,
+        crate::api::models::ScanType::Custom => crate::scanner::ScanType::Full,
+    };
+    
     // Start scan based on type
     let scan_result = engine.scanner.start_scan(
         &payload.path,
-        payload.scan_type.clone(),
-        payload.deep_scan.unwrap_or(false)
+        scan_type,
+        payload.deep_scan
     ).await;
 
     match scan_result {

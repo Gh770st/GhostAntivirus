@@ -15,8 +15,10 @@ pub mod network;
 pub mod firewall;
 pub mod crypto;
 pub mod api;
+pub mod signatures;
 pub mod system;
 pub mod updates;
+pub mod websocket;
 
 // Re-export commonly used types
 pub use analyzer::{BehaviorAnalyzer, RiskScore, Alert};
@@ -26,6 +28,8 @@ pub use ai::{AIIntegration, AIResponse};
 pub use network::{NetworkMonitor, Connection, TrafficStats};
 pub use firewall::{FirewallIntegration, FirewallRule, Action};
 pub use crypto::{EncryptionKey, Algorithm};
+   pub use signatures::{SignatureDatabase, Signature, DatabaseStats};
+   pub use websocket::{WSBroadcaster, WSMessage};
 
 use anyhow::Result;
 use log::info;
@@ -145,14 +149,14 @@ pub struct EngineStatus {
 mod tests {
     use super::*;
     
-    #[tokio::test]
-    async fn test_engine_creation() {
+    #[test]
+    fn test_engine_creation() {
         let engine = GhostEngine::new();
         assert!(engine.is_ok());
     }
     
-    #[tokio::test]
-    async fn test_engine_status() {
+    #[test]
+    fn test_engine_status() {
         let engine = GhostEngine::new().unwrap();
         let status = engine.get_status();
         assert_eq!(status.version, "3.0.0");

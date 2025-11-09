@@ -1,4 +1,21 @@
 // API middleware
+use std::sync::Arc;
+use std::net::IpAddr;
+use governor::{Quota, RateLimiter};
+use governor::state::{InMemoryState, NotKeyed};
+use governor::clock::DefaultClock;
+use lazy_static::lazy_static;
+use std::num::NonZeroU32;
+
+lazy_static! {
+    static ref RATE_LIMITER: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>> = {
+        // Allow 100 requests per minute
+        let quota = Quota::per_minute(NonZeroU32::new(100).unwrap());
+        Arc::new(RateLimiter::direct(quota))
+    };
+}
+
+use log::warn;
 use axum::{
     extract::{Request, State},
     middleware::Next,
@@ -10,7 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::AppState;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub sub: String,
     pub username: String,
@@ -82,9 +99,18 @@ pub async fn rate_limit_middleware(
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // TODO: Implement actual rate limiting
-    // For now, just pass through
-    Ok(next.run(request).await)
+    // Check rate limit
+    match RATE_LIMITER.check() {
+        Ok(_) => {
+            // Request allowed
+            Ok(next.run(request).await)
+        }
+        Err(_) => {
+            // Rate limit exceeded
+            warn!("Rate limit exceeded for request");
+            Err(StatusCode::TOO_MANY_REQUESTS)
+        }
+    }
 }
 
 /// Logging middleware
