@@ -109,25 +109,72 @@ GhostAntivirus is a **state-of-the-art antivirus solution** that combines the po
 ## 🚀 Quick Start
 
 ### Prerequisites
+- **Rust**: 1.91.0 or later
+- **Python**: 3.9 or later  
+- **Node.js**: 18.0 or later
+- **Docker**: Latest stable version
 
-- Docker 20.10+
-- Docker Compose 2.0+
-- 4GB+ RAM
-- 20GB+ disk space
+### Installation
 
-### One-Command Deployment
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Gh770st/GhostAntivirus.git
+   cd GhostAntivirus
+   ```
 
+2. **One-click setup**
+   ```bash
+   # Run the automated setup script
+   chmod +x scripts/setup.sh
+   ./scripts/setup.sh
+   ```
+
+3. **Manual setup (alternative)**
+   ```bash
+   # Install Rust
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   
+   # Install Python dependencies
+   pip install -r ai-engine/requirements.txt
+   
+   # Install Node.js dependencies
+   cd web-ui && npm install
+   ```
+
+### Running GhostAntivirus
+
+#### Option 1: Docker (Recommended)
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/GhostAntivirus.git
-cd GhostAntivirus
+# Build and run all services
+docker-compose up -d
 
-# Deploy everything
-docker-compose -f deploy/docker-compose.yml up -d
-
-# Access the dashboard
-open https://localhost
+# Access dashboard at http://localhost:3000
 ```
+
+#### Option 2: Native Development
+```bash
+# Start Core Engine (Terminal 1)
+cd core
+cargo run
+
+# Start AI Engine (Terminal 2)  
+cd ../ai-engine
+python main.py
+
+# Start Web Dashboard (Terminal 3)
+cd ../web-ui
+npm run dev
+```
+
+#### Option 3: Production Deployment
+```bash
+# Deploy to production
+docker-compose -f docker-compose.production.yml up -d
+```
+
+4. **Access the dashboard**
+   - **Development**: [http://localhost:3000](http://localhost:3000)
+   - **Production**: [https://your-domain.com](https://your-domain.com)
 
 ### Manual Installation
 
