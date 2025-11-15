@@ -172,10 +172,12 @@ class ScanProgress(BaseModel):
     files_scanned: int = Field(..., description="Number of files scanned")
     files_total: int = Field(..., description="Total files to scan")
     threats_found: int = Field(default=0, description="Number of threats found")
+    threats_detected: int = Field(default=0, description="Number of threats detected")
     errors: List[str] = Field(default_factory=list, description="Scan errors")
     start_time: datetime = Field(..., description="Scan start time")
     estimated_completion: Optional[datetime] = Field(None, description="Estimated completion time")
     current_file: Optional[str] = Field(None, description="Currently scanning file")
+    results: Optional[List[Dict[str, Any]]] = Field(None, description="Scan results details")
 
 
 class Alert(BaseModel):

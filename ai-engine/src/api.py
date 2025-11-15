@@ -391,9 +391,6 @@ async def process_scan(
 ):
     """Process scan operation"""
     
-    # TODO: Implement scan logic
-    # This would integrate with the Core Engine's scanning capabilities
-    
     if scan_id not in active_scans:
         return
     
@@ -401,26 +398,61 @@ async def process_scan(
     progress.status = "running"
     
     try:
-        # Simulate scan progress
         target_path = Path(target)
         
-        # Count files (simple implementation)
+        if not target_path.exists():
+            raise FileNotFoundError(f"Target path not found: {target}")
+        
+        # Collect files to scan
+        files_to_scan = []
         if target_path.is_file():
-            total_files = 1
+            files_to_scan = [target_path]
         else:
-            total_files = sum(1 for _ in target_path.rglob("*") if _.is_file())
+            if recursive:
+                files_to_scan = [f for f in target_path.rglob("*") if f.is_file()]
+            else:
+                files_to_scan = [f for f in target_path.iterdir() if f.is_file()]
         
-        progress.files_total = total_files
+        progress.files_total = len(files_to_scan)
         
-        # Simulate scanning
-        for i in range(total_files):
-            # Simulate processing time
-            await asyncio.sleep(0.01)
-            
-            progress.files_scanned = i + 1
-            progress.progress = (progress.files_scanned / progress.files_total) * 100
+        # Scan each file using the AI engine
+        threats_found = []
         
+        for i, file_path in enumerate(files_to_scan):
+            try:
+                # Use AI engine to analyze file
+                result = await ai_engine.analyze_file(file_path)
+                
+                # Check if file is a threat
+                if result.prediction == "malicious" or result.threat_score > 0.7:
+                    threats_found.append({
+                        "file_path": str(file_path),
+                        "threat_score": result.threat_score,
+                        "prediction": result.prediction,
+                        "confidence": result.confidence
+                    })
+                
+                # Update progress
+                progress.files_scanned = i + 1
+                progress.progress = (progress.files_scanned / progress.files_total) * 100
+                
+                # Small delay to prevent overwhelming the system
+                await asyncio.sleep(0.01)
+                
+            except Exception as e:
+                log.error(f"Failed to scan {file_path}: {e}")
+                # Continue with next file
+        
+        # Update final status
         progress.status = "completed"
+        progress.threats_found = threats_found
+        progress.threats_detected = len(threats_found)
+        
+        # Update global statistics
+        global total_threats_detected
+        total_threats_detected += len(threats_found)
+        
+        log.info(f"Scan {scan_id} completed: {len(threats_found)} threats found in {len(files_to_scan)} files")
         
     except Exception as e:
         log.error(f"Scan {scan_id} failed: {e}")
