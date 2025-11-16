@@ -205,7 +205,9 @@ impl SignatureDatabase {
     pub async fn update_database(&mut self) -> Result<usize> {
         info!("Updating signature database");
         
-        if true { // TODO: Check config for auto_update setting
+        // Check config for auto_update setting
+        let config = crate::config::get_config();
+        if !config.updates.auto_update {
             debug!("Auto-update disabled");
             return Ok(0);
         }

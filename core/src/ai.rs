@@ -49,7 +49,7 @@ pub struct ThreatReport {
 #[allow(dead_code)]
 pub struct AIIntegration {
     api_url: String,
-    client: reqwest::blocking::Client,
+    client: reqwest::Client,
     cache: HashMap<String, CachedResponse>,
     timeout: Duration,
     cache_ttl: Duration,
@@ -106,7 +106,7 @@ impl AIIntegration {
         let cache_ttl = Duration::from_secs(config.ai.cache_ttl_seconds);
         let enabled = config.ai.enabled;
         
-        let client = reqwest::blocking::Client::builder()
+        let client = reqwest::Client::builder()
             .timeout(timeout)
             .build()
             .context("Failed to create HTTP client")?;

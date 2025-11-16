@@ -376,37 +376,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _showNotifications() {
-    // TODO: Navigate to notifications screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Notifications coming soon!')),
-    );
+    Navigator.pushNamed(context, \'/notifications\');
   }
 
   void _navigateToScan() {
-    // TODO: Navigate to scan screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to scan')),
-    );
+    Navigator.pushNamed(context, \'/scan\');
   }
 
   void _navigateToThreats() {
-    // TODO: Navigate to threats screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to threats')),
-    );
+    Navigator.pushNamed(context, \'/threats\');
   }
 
   void _navigateToApps() {
-    // TODO: Navigate to apps screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to apps')),
-    );
+    Navigator.pushNamed(context, \'/apps\');
   }
 
   void _navigateToVpn() {
-    // TODO: Navigate to VPN screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to VPN')),
-    );
+    Navigator.pushNamed(context, \'/vpn\');
   }
 }

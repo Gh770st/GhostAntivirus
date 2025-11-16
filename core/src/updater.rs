@@ -109,7 +109,7 @@ pub struct UpdateManager {
     current_version: Version,
     update_schedule: Schedule,
     update_path: PathBuf,
-    client: reqwest::blocking::Client,
+    client: reqwest::Client,
 }
 
 impl UpdateManager {
@@ -129,7 +129,7 @@ impl UpdateManager {
         
         let update_schedule = Schedule::new(Duration::from_secs(config.updater.check_interval));
         
-        let client = reqwest::blocking::Client::builder()
+        let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
             .context("Failed to create HTTP client")?;
