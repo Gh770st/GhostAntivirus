@@ -1,0 +1,35 @@
+{
+  "launch_time": "2025-11-16T21:51:00.707254",
+  "execution_time": 13.002247,
+  "metrics": {
+    "social_media": {
+      "posts": 3,
+      "impressions": 3768,
+      "engagement": 434
+    },
+    "github": {
+      "stars": 236,
+      "contributors": 13,
+      "forks": 102
+    },
+    "media": {
+      "contacts": 4,
+      "responses": 1,
+      "coverage": 0
+    },
+    "influencers": {
+      "contacted": 3,
+      "responses": 3,
+      "coverage": 0
+    }
+  },
+  "social_media_posts": 3,
+  "media_contacts": 5,
+  "influencer_targets": 5,
+  "success_indicators": {
+    "viral_potential": false,
+    "media_interest": false,
+    "influencer_engagement": true,
+    "community_growth": false
+  }
+}
