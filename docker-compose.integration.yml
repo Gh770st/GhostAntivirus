@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Core Engine API
+  core-engine:
+    build:
+      context: ./core
+      dockerfile: ../deploy/Dockerfile.core
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      - JWT_SECRET=your-secret-key-change-in-production
+    volumes:
+      - ./data/quarantine:/var/quarantine
+      - ./data/logs:/var/log/ghost
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Engine
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: ../deploy/Dockerfile.ai
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    volumes:
+      - ./data/models:/app/models
+      - ./data/logs:/app/logs
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Network Guard
+  network-guard:
+    build:
+      context: ./network-guard
+      dockerfile: ../deploy/Dockerfile.network
+    ports:
+      - "9000:9000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=9000
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web Dashboard
+  web-dashboard:
+    build:
+      context: ./web-ui
+      dockerfile: ../deploy/Dockerfile.web
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_CORE_ENGINE_URL=http://core-engine:8080
+      - VITE_AI_ENGINE_URL=http://ai-engine:8000
+      - VITE_NETWORK_GUARD_URL=http://network-guard:9000
+      - VITE_WS_URL=ws://core-engine:8080/ws
+    depends_on:
+      - core-engine
+      - ai-engine
+      - network-guard
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  ghost-network:
+    driver: bridge
+
+volumes:
+  quarantine-data:
+  models-data:
+  logs-data:

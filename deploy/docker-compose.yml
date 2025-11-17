@@ -1,0 +1,205 @@
+version: '3.8'
+
+services:
+  # Core Engine (Rust)
+  ghost-core:
+    build:
+      context: ../core
+      dockerfile: Dockerfile
+    container_name: ghost-antivirus-core
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - RUST_LOG=info
+      - GHOST_CORE_HOST=0.0.0.0
+      - GHOST_CORE_PORT=9000
+    volumes:
+      - ghost_data:/var/lib/ghost-antivirus
+      - ghost_logs:/var/log/ghost-antivirus
+      - /:/host:ro  # Host system access for scanning
+    networks:
+      - ghost-network
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # AI Engine (Python)
+  ghost-ai:
+    build:
+      context: ../ai-engine
+      dockerfile: Dockerfile
+    container_name: ghost-antivirus-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_API_HOST=0.0.0.0
+      - AI_API_PORT=8000
+      - AI_DATABASE_URL=postgresql://ghost:ghost_password@postgres:5432/ghost_ai
+      - AI_REDIS_URL=redis://redis:6379/0
+      - AI_LOG_LEVEL=INFO
+      - AI_MODEL_PATH=/app/models/threat_classifier.h5
+    volumes:
+      - ghost_data:/data
+      - ghost_logs:/app/logs
+      - ./models:/app/models:ro
+    networks:
+      - ghost-network
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Web Dashboard
+  ghost-web:
+    build:
+      context: ../web-ui
+      dockerfile: Dockerfile
+    container_name: ghost-antivirus-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_CORE_URL=http://localhost:9000
+    networks:
+      - ghost-network
+    depends_on:
+      - ghost-ai
+      - ghost-core
+
+  # Network Guard
+  ghost-network:
+    build:
+      context: ../network-guard
+      dockerfile: Dockerfile
+    container_name: ghost-antivirus-network
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    environment:
+      - NETWORK_GUARD_HOST=0.0.0.0
+      - NETWORK_GUARD_PORT=7000
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      - ghost-network
+    privileged: true  # Required for network monitoring
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ghost-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ghost_ai
+      - POSTGRES_USER=ghost
+      - POSTGRES_PASSWORD=ghost_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghost -d ghost_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ghost-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - ghost-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ghost-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ghost_logs:/var/log/nginx
+    networks:
+      - ghost-network
+    depends_on:
+      - ghost-web
+      - ghost-ai
+      - ghost-core
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ghost-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ghost-network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ghost-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - ghost-network
+
+volumes:
+  ghost_data:
+    driver: local
+  ghost_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  ghost-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

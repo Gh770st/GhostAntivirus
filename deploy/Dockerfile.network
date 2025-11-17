@@ -1,0 +1,59 @@
+# GhostAntivirus Network Guard Dockerfile
+FROM golang:1.21-alpine as builder
+
+# Install build dependencies
+RUN apk add --no-cache git make gcc musl-dev
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o network-guard .
+
+# Runtime image
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates curl iptables
+
+# Create non-root user
+RUN adduser -D -s /bin/sh ghost
+
+# Create directories
+RUN mkdir -p /var/lib/ghost-network \
+             /var/log/ghost-network \
+             /etc/ghost-network
+
+# Copy binary from builder
+COPY --from=builder /app/network-guard /usr/local/bin/
+
+# Set permissions
+RUN chown -R ghost:ghost /var/lib/ghost-network \
+                         /var/log/ghost-network \
+                         /etc/ghost-network
+
+# Switch to non-root user
+USER ghost
+
+# Expose port
+EXPOSE 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:9000/health || exit 1
+
+# Environment variables
+ENV API_HOST=0.0.0.0 \
+    API_PORT=9000 \
+    LOG_LEVEL=info
+
+# Run the application
+CMD ["network-guard"]

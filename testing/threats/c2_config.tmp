@@ -1,0 +1,3 @@
+C2_Server: fake.server.com
+Port: 4444
+Poll_Interval: 30

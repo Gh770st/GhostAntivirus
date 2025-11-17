@@ -1,0 +1,106 @@
+[package]
+name = "ghost-antivirus-core"
+version = "3.0.0"
+edition = "2021"
+authors = ["WiterDevelopment <info@witerdev.com>"]
+description = "GhostAntivirus Core Engine - High-performance malware protection"
+license = "MIT"
+repository = "https://github.com/witerdev/GhostAntivirus"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "io-util", "net", "process"] }
+
+# Command line parsing
+clap = { version = "4.0", features = ["derive"] }
+
+# TOML parsing
+toml = "0.8"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Concurrency
+rayon = "1.7"
+
+# System information
+sysinfo = "0.29"
+
+# File operations
+walkdir = "2.3"
+sha2 = "0.10"
+
+# Compression
+flate2 = "1.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Configuration
+config = "0.13"
+
+# HTTP client for updates
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# Async trait
+async-trait = "0.1"
+
+# Web framework for REST API
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
+
+# WebSocket support
+tokio-tungstenite = "0.21"
+
+# Authentication
+jsonwebtoken = "9.2"
+bcrypt = "0.15"
+
+# Database for storing results
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+
+# Tracing for better logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Environment variables
+dotenv = "0.15"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Lazy static for global state
+lazy_static = "1.4"
+futures = "0.3"
+governor = "0.6"
+memmap2 = "0.9"
+
+# Cross-platform
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "winnt", "handleapi"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3.0"
+tokio-test = "0.4"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+
+[[bin]]
+name = "ghost-core"
+path = "src/main.rs"
+
+[lib]
+name = "ghost_core"
+path = "src/lib.rs"

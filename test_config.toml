@@ -1,0 +1,9 @@
+[model]
+path = "models/test.h5"
+type = "neural_network"
+input_features = 300
+
+[api]
+host = "0.0.0.0"
+port = 8000
+workers = 1
